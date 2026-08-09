@@ -23,6 +23,8 @@ public class Member extends Contact implements SenderAndCidMidGetter, SenderV2 {
         super(mate);
         this.setId(this.getMeta().getString("id"));
         this.setOpenid(this.getMeta().getString("member_openid"));
+        this.setUsername(this.getMeta().getString("username"));
+        this.setRole(this.getMeta().getString("member_role"));
     }
 
     @Override

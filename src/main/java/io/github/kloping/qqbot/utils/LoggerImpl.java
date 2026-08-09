@@ -18,6 +18,28 @@ import java.util.Date;
 public class LoggerImpl implements Logger {
     public static final LoggerImpl INSTANCE = new LoggerImpl();
 
+    /**
+     * Optional host-application logger. The Maven submodule remains standalone
+     * when no sink is configured, while HuHoBot clients can route SDK logs to
+     * their native logger implementation.
+     */
+    private static volatile LogSink logSink;
+
+    public interface LogSink {
+        int ERROR_LEVEL = -1;
+        int DEBUG_LEVEL = 2;
+
+        void log(String message, int level);
+    }
+
+    public static void setLogSink(LogSink sink) {
+        logSink = sink;
+    }
+
+    public static void clearLogSink() {
+        logSink = null;
+    }
+
     public static final Color NORMAL_LOW_COLOR = new Color(116, 117, 116, 224);
     public static final Color NORMAL_COLOR = new Color(202, 206, 199, 247);
     public static final Color INFO_COLOR = new Color(24, 220, 85, 247);
@@ -132,7 +154,14 @@ public class LoggerImpl implements Logger {
             }
         }
         if (level != -1 && level < logLevel) return;
-        System.out.println(out);
+        LogSink sink = logSink;
+        if (sink != null) {
+            // Let the host logger add its own timestamp/prefix. The formatted
+            // SDK line above is still retained in the log file.
+            sink.log(mess, level);
+        } else {
+            System.out.println(out);
+        }
     }
 
     private BufferedWriter writer = null;

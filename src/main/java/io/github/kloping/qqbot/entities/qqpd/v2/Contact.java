@@ -28,6 +28,8 @@ public abstract class Contact implements SenderAndCidMidGetter {
 
     protected String id;
     protected String openid;
+    protected String username;
+    protected String role;
 
     @Getter
     protected Bot bot;
