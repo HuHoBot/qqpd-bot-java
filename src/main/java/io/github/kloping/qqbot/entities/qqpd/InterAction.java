@@ -27,6 +27,11 @@ import static io.github.kloping.qqbot.entities.qqpd.Channel.SEND_MESSAGE_HEADERS
  */
 @Data
 public class InterAction implements SenderV2, SenderAndCidMidGetter {
+    /**
+     * {@link #scene} 的频道场景取值，用于 {@link #chat_type} 缺失时判定环境
+     */
+    private static final String SCENE_GUILD = "guild";
+
     private String id;
     private Integer type;
     private String scene;
@@ -72,7 +77,12 @@ public class InterAction implements SenderV2, SenderAndCidMidGetter {
 
     @Override
     public EnvType getEnvType() {
-        return chat_type == 0 ? EnvType.GUILD : EnvType.GROUP;
+        if (chat_type != null) {
+            return chat_type == 0 ? EnvType.GUILD : EnvType.GROUP;
+        }
+        // chat_type 并非每次都会下发；scene 字段承载同一信息（guild / group / c2c），
+        // 两者皆缺失时按群聊处理，与 chat_type 非 0 时的既有行为一致。
+        return SCENE_GUILD.equals(scene) ? EnvType.GUILD : EnvType.GROUP;
     }
 
     @Setter
