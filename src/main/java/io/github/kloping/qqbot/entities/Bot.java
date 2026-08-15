@@ -51,6 +51,9 @@ public class Bot {
     @AutoStand
     public AuthV2Base authV2Base;
 
+    @AutoStand
+    public PanelBase panelBase;
+
     @Getter
     @AutoStand
     Starter.Config config;

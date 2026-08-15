@@ -182,8 +182,28 @@ public class RawMessage implements SenderAndCidMidGetter, DeleteAble, Reactive, 
     public String toString0() {
         StringBuilder sb = new StringBuilder();
         sb.append(content);
-        if (attachments != null) for (MessageAttachment attachment : attachments)
-            sb.append("[pic:").append(attachment.getFilename()).append("]");
+        if (attachments != null) for (MessageAttachment attachment : attachments){
+            //根据类型判断
+            String content_type = attachment.getContent_type();
+            /**
+             * voice=语音消息 image/jpeg=JPEG 图片 image/png=PNG 图片 image/gif=GIF 图片 video/mp4=MP4 视频 file=群文件
+             */
+            String content;
+            String asrText = "";
+            if(content_type.contains("voice")){
+                content = "voice";
+                if(!attachment.getAsr_refer_text().isEmpty())
+                    asrText = "|"+attachment.getAsr_refer_text();
+            }
+            else if(content_type.contains("image"))
+                content = "pic";
+            else if(content_type.contains("video"))
+                content = "video";
+            else
+                content = "file";
+            sb.append("[").append(content).append(":").append(attachment.getFilename()).append(asrText).append("]");
+        }
+
         return sb.toString();
     }
 }

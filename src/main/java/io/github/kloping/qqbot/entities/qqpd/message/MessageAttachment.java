@@ -16,4 +16,5 @@ public class MessageAttachment {
     private Integer height;
     private Integer size;
     private Integer width;
+    private String asr_refer_text;
 }
