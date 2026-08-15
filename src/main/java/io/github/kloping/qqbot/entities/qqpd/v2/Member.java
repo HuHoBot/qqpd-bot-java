@@ -20,7 +20,7 @@ import lombok.EqualsAndHashCode;
 @EqualsAndHashCode(callSuper = true)
 public class Member extends Contact implements SenderAndCidMidGetter, SenderV2 {
     public Member(JSONObject mate) {
-        super(mate);
+        super(mate == null ? new JSONObject() : mate);
         this.setId(this.getMeta().getString("id"));
         this.setOpenid(this.getMeta().getString("member_openid"));
         this.setUsername(this.getMeta().getString("username"));
