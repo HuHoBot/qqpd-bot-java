@@ -13,10 +13,9 @@ import io.github.kloping.spt.annotations.AutoStand;
 import io.github.kloping.spt.annotations.AutoStandAfter;
 import io.github.kloping.spt.annotations.Entity;
 import io.github.kloping.spt.impls.HttpStatusReceiver;
-import io.github.kloping.spt.impls.LoggerImpl;
+import io.github.kloping.qqbot.utils.LoggerImpl;
 import io.github.kloping.spt.interfaces.Logger;
 import io.github.kloping.spt.interfaces.component.HttpClientManager;
-import org.fusesource.jansi.Ansi;
 import org.jsoup.Connection;
 import org.jsoup.nodes.Document;
 
@@ -52,14 +51,14 @@ public class HttpClientConfig implements HttpStatusReceiver {
         logger.log(String.format("Use the (%s) method through the (%s) interface to request " +
                         "the data obtained by the response code of the (%s) URL is (%s), " +
                         "and (%s) may be converted to (%s) type Will be processed and filtered",
-                Ansi.ansi().fgRgb(methodColor.getRGB()).a(reqMethod.name()).reset().toString(),
-                Ansi.ansi().fgRgb(interfaceColor.getRGB()).a(interface0.getSimpleName()).reset().toString(),
-                Ansi.ansi().fgRgb(urlColor.getRGB()).a(url).reset().toString(),
-                (code >= 400 || code < 200) ? Ansi.ansi().fgRgb(LoggerImpl.ERROR_COLOR.getRGB()).a(code).reset().toString()
-                        : Ansi.ansi().fgRgb(LoggerImpl.INFO_COLOR.getRGB()).a(code).reset().toString(),
-                (code >= 400 || code < 200) ? Ansi.ansi().fgRgb(LoggerImpl.ERROR_COLOR.getRGB()).a(metadata.body().wholeText()).reset().toString()
-                        : Ansi.ansi().fgRgb(dataColor.getRGB()).a(metadata.body().wholeText()).reset().toString(),
-                Ansi.ansi().fgRgb(LoggerImpl.NORMAL_LOW_COLOR.getRGB()).a(o).reset().toString()
+                LoggerImpl.colorize(reqMethod.name(), methodColor),
+                LoggerImpl.colorize(interface0.getSimpleName(), interfaceColor),
+                LoggerImpl.colorize(url, urlColor),
+                (code >= 400 || code < 200) ? LoggerImpl.colorize(code, LoggerImpl.ERROR_COLOR)
+                        : LoggerImpl.colorize(code, LoggerImpl.INFO_COLOR),
+                (code >= 400 || code < 200) ? LoggerImpl.colorize(metadata.body().wholeText(), LoggerImpl.ERROR_COLOR)
+                        : LoggerImpl.colorize(metadata.body().wholeText(), dataColor),
+                LoggerImpl.colorize(o, LoggerImpl.NORMAL_LOW_COLOR)
         ));
         fillAll(cla, o);
         Public.EXECUTOR_SERVICE.submit(() -> {

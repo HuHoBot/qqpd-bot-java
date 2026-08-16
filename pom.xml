@@ -95,11 +95,6 @@
             <version>4.12.0</version>
         </dependency>
         <dependency>
-            <groupId>org.fusesource.jansi</groupId>
-            <artifactId>jansi</artifactId>
-            <version>2.4.0</version>
-        </dependency>
-        <dependency>
             <!-- Bouncy Castle for Ed25519 support q.qq校验 -->
             <!-- https://mvnrepository.com/artifact/org.bouncycastle/bcpkix-jdk18on -->
             <groupId>org.bouncycastle</groupId>
