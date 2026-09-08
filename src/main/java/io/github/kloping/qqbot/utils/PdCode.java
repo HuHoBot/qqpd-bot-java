@@ -40,7 +40,9 @@ public class PdCode {
         } else if (e instanceof PlainText) {
             PlainText plainText = (PlainText) e;
             return (plainText.toString());
-        } else return e.toString();
+        } else {
+            return e.toString();
+        }
     }
 
     public static String serializeToPdCode(SendAble[] datas) {

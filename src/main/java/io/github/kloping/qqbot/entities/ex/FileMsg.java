@@ -127,4 +127,18 @@ public abstract class FileMsg implements SendAble {
             return new Result<V2Result>(v2.getV2().send(er.getCid(), data.toString(), SEND_MESSAGE_HEADERS));
         }
     }
+
+    @Override
+    public String toString() {
+        if (file_type == 1) {
+            return "[image]";
+        } else if (file_type == 2) {
+            return "[video]";
+        } else if (file_type == 3) {
+            return "[audio]";
+        } else if (file_type == 4) {
+            return "[file]";
+        }
+        return "[unknown]";
+    }
 }

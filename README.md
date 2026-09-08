@@ -33,13 +33,13 @@ Maven
 <dependency>
     <groupId>io.github.kloping</groupId>
     <artifactId>bot-qqpd-java</artifactId>
-    <version>1.5.4-R3</version>
+    <version>1.5.4-L4</version>
 </dependency>
 ```
 
 Gradle
  
-    implementation 'io.github.kloping:bot-qqpd-java:1.5.4-R3'
+    implementation 'io.github.kloping:bot-qqpd-java:1.5.4-L4'
 
 ### 使用前提
 
@@ -72,7 +72,6 @@ starter.registerListenerHost(new ListenerHost(){
 });
 ```
 
-> #### V1.4.6
 > 事件订阅 默认的事件订阅 不会接收消息事件 <br>
 > 需要确定自己的机器人是公域还是私域 <br>
 > 来确定 需要 **[设置订阅](src/test/java/test_Intents.java)** 的 **[事件类型](src/main/java/io/github/kloping/qqbot/api/Intents.java)**

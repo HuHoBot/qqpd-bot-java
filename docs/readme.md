@@ -85,7 +85,7 @@ event.send(new Markdown("custom_template_id")
 
 ~~公域机器人通常只有在被 `@` 时才会触发群消息事件。~~
 
-### 群管理 API（v1.5.4-R2）
+### 群管理 API
 以下方法通过 `Group` 对象调用。事件中可使用 `GroupEvent#getGroup()` 或 `GroupMessageEvent#getSubject()` 获取群对象。
 ```java
 Group group = event.getGroup();
@@ -110,9 +110,9 @@ bot.sendMessage("474905EE5C4F5199A1EC08E1C04BF077", builder.build());
 ```
 
 ## 配置连接方式
-### 自定义 WebSocket 地址（v1.5.2-R1 及以上）
+### 自定义 WebSocket 地址
 已开通 Webhook 且无法继续使用 WebSocket 时，可使用[Webhook 转 WebSocket 服务](https://github.com/DevOpen-Club/qbot-webhook-to-websocket)。设置 `starter.getConfig().setWslink(...)` 后按项目提供的监听器处理消息。
-### Webhook（v1.5.2-R2）
+### Webhook
 Webhook 模式启用后，其他连接配置将失效。将回调地址设置为 `https://your-domain/webhook0` ，确认部署机器可访问后，再设置服务端口：
 ```java
 // 0 表示不开启 Webhook
