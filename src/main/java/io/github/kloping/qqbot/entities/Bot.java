@@ -24,6 +24,14 @@ public class Bot {
     @AutoStand
     public InterActionBase interActionBase;
 
+    /**
+     * 注解代理无法覆盖的 REST 接口（DELETE/PUT 等）。
+     *
+     * @see RestApi
+     */
+    @AutoStand
+    public RestApi restApi;
+
     @AutoStand
     public GuildBase guildBase;
 

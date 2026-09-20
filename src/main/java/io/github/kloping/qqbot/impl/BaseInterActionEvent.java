@@ -58,7 +58,7 @@ public class BaseInterActionEvent implements InterActionEvent {
 
     @Override
     public void response(int code) {
-        getBot().interActionBase.response(getInterAction().getId(), String.format("{\"code\": %s}", code));
+        getBot().restApi.respondInteraction(getInterAction().getId(), code);
     }
 
     @Override
