@@ -1,7 +1,5 @@
 package io.github.kloping.qqbot.utils;
 
-import io.github.kloping.spt.interfaces.Logger;
-
 import java.awt.*;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -14,7 +12,7 @@ import java.util.Date;
 /**
  * @author github.kloping
  */
-public class LoggerImpl implements Logger {
+public class LoggerImpl {
     public static final LoggerImpl INSTANCE = new LoggerImpl();
 
     /**
@@ -107,17 +105,14 @@ public class LoggerImpl implements Logger {
      *
      * @param path
      */
-    @Override
     public void setOutFile(String path) {
         this.logFileDir = path;
     }
 
-    @Override
     public void setFormat(SimpleDateFormat format) {
         df = format;
     }
 
-    @Override
     public void Log(String mess, Integer level) {
         String log = null;
         String out = null;
@@ -201,12 +196,10 @@ public class LoggerImpl implements Logger {
         }
     }
 
-    @Override
     public int setLogLevel(int level) {
         return logLevel = level;
     }
 
-    @Override
     public void setPrefix(String prefix) {
         this.prefix = prefix;
     }

@@ -4,7 +4,7 @@ import io.github.kloping.qqbot.Start0;
 import io.github.kloping.qqbot.Starter;
 import io.github.kloping.spt.annotations.AutoStand;
 import io.github.kloping.spt.annotations.Entity;
-import io.github.kloping.spt.interfaces.Logger;
+import lombok.extern.slf4j.Slf4j;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
  * @author github.kloping
  */
 @Entity
+@Slf4j
 public class RestApi {
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 
@@ -40,9 +41,6 @@ public class RestApi {
 
     @AutoStand
     Start0 start0;
-
-    @AutoStand
-    Logger logger;
 
     /**
      * 撤回群聊消息
@@ -96,8 +94,7 @@ public class RestApi {
             Response response = CLIENT.newCall(builder.build()).execute();
             try {
                 if (response.code() < 200 || response.code() >= 400) {
-                    if (logger != null)
-                        logger.error(String.format("%s %s failed: HTTP %s", method, path, response.code()));
+                    log.error(String.format("%s %s failed: HTTP %s", method, path, response.code()));
                     return false;
                 }
                 return true;
@@ -105,7 +102,7 @@ public class RestApi {
                 response.close();
             }
         } catch (Exception e) {
-            if (logger != null) logger.error(String.format("%s %s error: %s", method, path, e.getMessage()));
+            log.error(String.format("%s %s error: %s", method, path, e.getMessage()));
             return false;
         }
     }
