@@ -1,7 +1,6 @@
 package io.github.kloping.qqbot.entities.qqpd.message;
 
 import com.alibaba.fastjson.annotation.JSONField;
-import io.github.kloping.judge.Judge;
 import io.github.kloping.qqbot.api.*;
 import io.github.kloping.qqbot.api.message.Pinsble;
 import io.github.kloping.qqbot.entities.Bot;
@@ -18,11 +17,12 @@ import io.github.kloping.qqbot.http.data.V2MsgData;
 import io.github.kloping.qqbot.http.data.V2Result;
 import io.github.kloping.qqbot.impl.MessagePacket;
 import io.github.kloping.qqbot.utils.BaseUtils;
-import io.github.kloping.spt.PartUtils;
+import io.github.kloping.spt.util.Judge;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import lombok.experimental.Accessors;
 
 import static io.github.kloping.qqbot.entities.qqpd.Channel.SEND_MESSAGE_HEADERS;
@@ -33,6 +33,7 @@ import static io.github.kloping.qqbot.entities.qqpd.Channel.SEND_MESSAGE_HEADERS
  * @author github-kloping
  */
 @Data
+@Slf4j
 @Accessors(chain = true)
 @EqualsAndHashCode
 public class RawMessage implements SenderAndCidMidGetter, DeleteAble, Reactive, Pinsble, SenderV2 {
@@ -86,7 +87,7 @@ public class RawMessage implements SenderAndCidMidGetter, DeleteAble, Reactive, 
                 }
             }
         } catch (Exception e) {
-            bot.logger.error(PartUtils.getExceptionLine(e));
+            log.error("File upload preparation failed", e);
         }
     }
 
@@ -170,11 +171,13 @@ public class RawMessage implements SenderAndCidMidGetter, DeleteAble, Reactive, 
     }
 
     @Override
+    @JSONField(serialize = false, deserialize = false)
     public PinsMessage getPins() {
         return getBot().channelBase.getPins(getChannelId());
     }
 
     @Override
+    @JSONField(serialize = false, deserialize = false)
     public BaseV2 getV2() {
         return envType == EnvType.GROUP ? bot.groupBaseV2 : envType == EnvType.GROUP_USER ? bot.userBaseV2 : null;
     }

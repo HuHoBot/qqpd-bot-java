@@ -2,9 +2,8 @@ package io.github.kloping.qqbot.network;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import io.github.kloping.common.Public;
-import io.github.kloping.map.MapUtils;
 import io.github.kloping.qqbot.Starter;
+import io.github.kloping.qqbot.api.event.ConnectedEvent;
 import io.github.kloping.qqbot.api.event.Event;
 import io.github.kloping.qqbot.api.exc.RequestException;
 import io.github.kloping.qqbot.api.message.MessageEvent;
@@ -17,7 +16,8 @@ import io.github.kloping.qqbot.utils.InvokeUtils;
 import io.github.kloping.spt.annotations.AutoStand;
 import io.github.kloping.spt.annotations.AutoStandAfter;
 import io.github.kloping.spt.annotations.Entity;
-import io.github.kloping.spt.interfaces.Logger;
+import io.github.kloping.spt.util.MapUtils;
+import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -32,6 +32,7 @@ import static io.github.kloping.spt.PartUtils.getExceptionLine;
  * @author github.kloping
  */
 @Entity
+@Slf4j
 public class Events implements OnPackReceive {
     public static final String EXTEND_ID = "raw-id";
 
@@ -46,11 +47,11 @@ public class Events implements OnPackReceive {
         if (t == null) return false;
         JSONObject jo = JSON.parseObject(JSON.toJSONString(pack.getD()));
         jo.put(EXTEND_ID, pack.getId());
-        Public.EXECUTOR_SERVICE.submit(() -> {
+        config.getEventExecutor().submit(() -> {
             try {
                 onEvent(t, jo);
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("Event processing failed", e);
             }
         });
         return false;
@@ -60,9 +61,6 @@ public class Events implements OnPackReceive {
     Starter.Config config;
 
     @AutoStand
-    Logger logger;
-
-    @AutoStand
     Bot bot;
 
     private void onEvent(String t, JSONObject obj) throws Exception {
@@ -70,12 +68,12 @@ public class Events implements OnPackReceive {
         RawMessage msg = null;
         msg = obj.toJavaObject(RawMessage.class);
         if (msg == null) {
-            logger.waring(String.format("Unknown Pack(%s)", obj.toString()));
+            log.warn("Unknown Pack({})", obj);
             return;
         }
         List<EventRegister> registers = id2reg.get(t);
         if (registers == null || registers.isEmpty()) {
-            logger.waring(String.format("%s yet not registered", t));
+            log.warn("{} yet not registered", t);
             return;
         }
         msg.setBot(bot);
@@ -86,37 +84,40 @@ public class Events implements OnPackReceive {
                 ListenerHost l = getM2L().get(method);
                 if (method.getParameterTypes()[0].isAssignableFrom(event.getClass())) {
                     invokeBefore(l, event, method, Events.this);
-                    Public.EXECUTOR_SERVICE.submit(() -> {
+                    config.getEventExecutor().submit(() -> {
                         try {
                             method.invoke(l, event);
                         } catch (IllegalAccessException e) {
-                            logger.error("EventReceiver The method parameter is set incorrectly");
-                            logger.error(e.getMessage() + "\n\tat " + getExceptionLine(e));
+                            log.error("EventReceiver method parameter is set incorrectly", e);
                         } catch (InvocationTargetException e) {
                             if (l.handleException(e.getTargetException())) {
                                 if (e.getTargetException() instanceof RequestException) {
                                     RequestException re = (RequestException) e.getTargetException();
-                                    logger.error(String.format("%s: code(%s) %s at", re.getClass().getSimpleName(), re.getCode(), re.getData().getMessage()));
+                                    log.error("{}: code({}) {} at", re.getClass().getSimpleName(), re.getCode(), re.getData().getMessage());
                                     for (StackTraceElement traceElement : re.getStackTrace()) {
-                                        logger.error(String.format("\t%s.%s(%s:%s)", traceElement.getClassName(), traceElement.getMethodName(),
+                                        log.error(String.format("\t%s.%s(%s:%s)", traceElement.getClassName(), traceElement.getMethodName(),
                                                 traceElement.getFileName() == null ? "unknown" : traceElement.getFileName(), traceElement.getLineNumber()));
                                     }
                                 } else {
-                                    logger.error(getExceptionLine(e.getTargetException()));
+                                    log.error("Event receiver invocation failed", e.getTargetException());
                                 }
                             }
                         } catch (Exception e) {
                             if (l.handleException(e))
-                                logger.error(getExceptionLine(e));
+                                log.error("Event receiver invocation failed", e);
                         }
                     });
                 }
             }
-            logger.info(String.format("Bot(%s) post(%s) from %s", bot.getInfo().getUsername(), event, event.getClassName()));
+            if (!(event instanceof ConnectedEvent && connectedEventLogged)) {
+                log.info("Bot({}) post({}) from {}", bot.getInfo().getUsername(), event, event.getClassName());
+                if (event instanceof ConnectedEvent) connectedEventLogged = true;
+            }
         }
     }
 
     private final Map<Method, ListenerHost> m2l = new HashMap<>();
+    private volatile boolean connectedEventLogged;
     private int cap = 0;
 
     private Map<Method, ListenerHost> getM2L() {

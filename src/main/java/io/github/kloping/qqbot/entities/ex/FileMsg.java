@@ -1,6 +1,5 @@
 package io.github.kloping.qqbot.entities.ex;
 
-import io.github.kloping.judge.Judge;
 import io.github.kloping.qqbot.api.SendAble;
 import io.github.kloping.qqbot.api.SenderAndCidMidGetter;
 import io.github.kloping.qqbot.api.SenderV2;
@@ -11,6 +10,7 @@ import io.github.kloping.qqbot.http.data.Result;
 import io.github.kloping.qqbot.http.data.V2MsgData;
 import io.github.kloping.qqbot.http.data.V2Result;
 import io.github.kloping.qqbot.impl.MessagePacket;
+import io.github.kloping.spt.util.Judge;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
@@ -118,7 +118,7 @@ public abstract class FileMsg implements SendAble {
             } else {
                 result = v2.getV2().sendFile(er.getCid(), String.format("{\"file_type\": %s,\"file_data\": \"%s\",\"srv_send_msg\": false}", getFile_type(), Base64.getEncoder().encodeToString(bytes)), Channel.SEND_MESSAGE_HEADERS);
             }
-            result.logFileInfo(er.getBot().logger, this);
+            result.logFileInfo(this);
             V2MsgData data = new V2MsgData();
             data.setMsg_type(7);
             if (Judge.isNotEmpty(er.getMid())) data.setMsg_id(er.getMid());
@@ -126,5 +126,19 @@ public abstract class FileMsg implements SendAble {
             data.setMsg_seq(v2.getMsgSeq());
             return new Result<V2Result>(v2.getV2().send(er.getCid(), data.toString(), SEND_MESSAGE_HEADERS));
         }
+    }
+
+    @Override
+    public String toString() {
+        if (file_type == 1) {
+            return "[image]";
+        } else if (file_type == 2) {
+            return "[video]";
+        } else if (file_type == 3) {
+            return "[audio]";
+        } else if (file_type == 4) {
+            return "[file]";
+        }
+        return "[unknown]";
     }
 }
