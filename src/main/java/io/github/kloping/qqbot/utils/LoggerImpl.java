@@ -33,6 +33,13 @@ public class LoggerImpl {
         logSink = sink;
     }
 
+    /**
+     * 读取当前日志桥，供宿主应用（例如 logback appender）把日志转发到平台日志。
+     */
+    public static LogSink getLogSink() {
+        return logSink;
+    }
+
     public static void clearLogSink() {
         logSink = null;
     }
