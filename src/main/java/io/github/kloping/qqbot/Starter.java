@@ -140,6 +140,10 @@ public class Starter implements Runnable {
         contextManager.append(new Integer[]{0, 1}, SHARD_ID);
         contextManager.append(getConfig().getReconnect(), RECONNECT_K_ID);
         wssWorker = contextManager.getContextEntity(WssWorker.class);
+        Bot bot = contextManager.getContextEntity(Bot.class);
+        if (bot != null && bot.restApi != null) {
+            bot.restApi.bind(this, contextManager.getContextEntity(Start0.class));
+        }
         contextManager.getContextEntity(HttpClientManager.class).setPrint(false);
         wssWork();
         Resource.print();

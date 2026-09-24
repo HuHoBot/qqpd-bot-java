@@ -42,6 +42,11 @@ public class RestApi {
     @AutoStand
     Start0 start0;
 
+    public void bind(Starter starter, Start0 start0) {
+        this.starter = starter;
+        this.start0 = start0;
+    }
+
     /**
      * 撤回群聊消息
      * <table><thead><tr><th colspan="2">基本</th></tr> <tr><td>HTTP URL</td> <td>/v2/groups/{group_openid}/messages/{message_id}</td></tr> <tr><td>HTTP Method</td> <td>DELETE</td></tr></table>
@@ -84,7 +89,11 @@ public class RestApi {
      * @return HTTP 2xx 视为成功
      */
     public boolean request(String method, String path, String jsonBody) {
-        if (starter == null || start0 == null) return false;
+        if (starter == null || start0 == null) {
+            log.error(String.format("%s %s skipped: RestApi is not bound (starter=%s, start0=%s)",
+                    method, path, starter != null, start0 != null));
+            return false;
+        }
         try {
             String host = starter.net.endsWith("/")
                     ? starter.net.substring(0, starter.net.length() - 1) : starter.net;
@@ -93,8 +102,9 @@ public class RestApi {
             builder.method(method, jsonBody == null ? null : RequestBody.create(JSON, jsonBody));
             Response response = CLIENT.newCall(builder.build()).execute();
             try {
+                String responseBody = response.body() == null ? "" : response.body().string();
                 if (response.code() < 200 || response.code() >= 400) {
-                    log.error(String.format("%s %s failed: HTTP %s", method, path, response.code()));
+                    log.error(String.format("%s %s failed: HTTP %s %s", method, path, response.code(), responseBody));
                     return false;
                 }
                 return true;
