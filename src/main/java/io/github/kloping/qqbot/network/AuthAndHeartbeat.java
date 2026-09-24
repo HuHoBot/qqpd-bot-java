@@ -85,7 +85,7 @@ public class AuthAndHeartbeat implements OnPackReceive, OnCloseListener, Events.
                 log.error("无权限订阅事件");
                 break;
             case 1000:
-                logger.info(String.format("QQ机器人平台连接已成功关闭（返回码 %s）", code));
+                log.info(String.format("QQ机器人平台连接已成功关闭（返回码 %s）", code));
                 break;
             case 1006:
                 identifyConnect(code, wss);

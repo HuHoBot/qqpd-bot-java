@@ -229,16 +229,16 @@ public class Starter implements Runnable {
                 }
             }
         } catch (Exception e) {
-            APPLICATION.logger.error("softClose: cancel main future failed: " + e.getMessage());
+            log.error("softClose: cancel main future failed: " + e.getMessage());
         }
         try {
             if (wssWorker != null && wssWorker.webSocket != null && !wssWorker.webSocket.isClosed()) {
                 wssWorker.webSocket.closeBlocking();
             }
         } catch (Exception e) {
-            APPLICATION.logger.error("softClose: close websocket failed: " + e.getMessage());
+            log.error("softClose: close websocket failed: " + e.getMessage());
         }
-        APPLICATION.logger.info("Bot soft-close complete (thread pools kept alive)");
+        log.info("Bot soft-close complete (thread pools kept alive)");
     }
 
     public void registerListenerHost(ListenerHost listenerHost) {
