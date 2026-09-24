@@ -229,6 +229,33 @@ public class Starter implements Runnable {
         APPLICATION.logger.info("Bot shutdown complete");
     }
 
+    /**
+     * 软关闭：仅关闭 WebSocket 连接，不终止共享线程池。
+     * 用于 restart 场景——关闭旧连接后仍可创建新 Starter。
+     */
+    public void softClose() {
+        getConfig().setReconnect(false);
+        getConfig().setAnyCloseReconnect(false);
+        try {
+            if (contextManager != null) {
+                Future future = contextManager.getContextEntity(Future.class, MAIN_FUTURE_ID);
+                if (future != null && !future.isCancelled() && !future.isDone()) {
+                    future.cancel(true);
+                }
+            }
+        } catch (Exception e) {
+            APPLICATION.logger.error("softClose: cancel main future failed: " + e.getMessage());
+        }
+        try {
+            if (wssWorker != null && wssWorker.webSocket != null && !wssWorker.webSocket.isClosed()) {
+                wssWorker.webSocket.closeBlocking();
+            }
+        } catch (Exception e) {
+            APPLICATION.logger.error("softClose: close websocket failed: " + e.getMessage());
+        }
+        APPLICATION.logger.info("Bot soft-close complete (thread pools kept alive)");
+    }
+
     public void registerListenerHost(ListenerHost listenerHost) {
         getConfig().getListenerHosts().add(listenerHost);
     }

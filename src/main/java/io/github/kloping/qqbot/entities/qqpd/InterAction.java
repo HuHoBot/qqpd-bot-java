@@ -72,7 +72,7 @@ public class InterAction implements SenderV2, SenderAndCidMidGetter {
 
     @Override
     public EnvType getEnvType() {
-        return chat_type == 0 ? EnvType.GUILD : EnvType.GROUP;
+        return chat_type != null && chat_type == 0 ? EnvType.GUILD : EnvType.GROUP;
     }
 
     @Setter
