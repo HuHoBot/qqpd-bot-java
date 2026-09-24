@@ -6,7 +6,7 @@
 
     <groupId>io.github.kloping</groupId>
     <artifactId>bot-qqpd-java</artifactId>
-    <version>1.5.3-L4</version>
+    <version>1.5.4-R4</version>
 
     <packaging>jar</packaging>
     <name>bot-qqpd-java</name>
@@ -39,45 +39,33 @@
         </developer>
     </developers>
     <properties>
-        <java.version>8</java.version>
+        <java.version>11</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <maven.compiler.source>8</maven.compiler.source>
-        <maven.compiler.target>8</maven.compiler.target>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
     </properties>
     <dependencies>
         <dependency>
             <groupId>io.github.kloping</groupId>
             <artifactId>SpringTool</artifactId>
-            <version>0.6.4</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>io.github.Kloping</groupId>
-                    <artifactId>JvUtils</artifactId>
-                </exclusion>
-            </exclusions>
+            <version>0.7.2-L2</version>
         </dependency>
         <dependency>
-            <groupId>io.github.kloping</groupId>
-            <artifactId>JvUtils</artifactId>
-            <version>0.4.9-Beta1</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-api</artifactId>
-                </exclusion>
-            </exclusions>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>2.0.13</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.5.20</version>
+            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.java-websocket</groupId>
             <artifactId>Java-WebSocket</artifactId>
             <version>1.6.0</version>
-        </dependency>
-        <!-- Maven -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-nop</artifactId>
-            <version>2.0.12</version>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
@@ -95,11 +83,6 @@
             <version>4.12.0</version>
         </dependency>
         <dependency>
-            <groupId>org.fusesource.jansi</groupId>
-            <artifactId>jansi</artifactId>
-            <version>2.4.0</version>
-        </dependency>
-        <dependency>
             <!-- Bouncy Castle for Ed25519 support q.qq校验 -->
             <!-- https://mvnrepository.com/artifact/org.bouncycastle/bcpkix-jdk18on -->
             <groupId>org.bouncycastle</groupId>
@@ -115,7 +98,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.26</version>
+            <version>1.18.36</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>

@@ -2,8 +2,6 @@ package io.github.kloping.qqbot.network;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import io.github.kloping.common.Public;
-import io.github.kloping.date.FrameUtils;
 import io.github.kloping.qqbot.Start0;
 import io.github.kloping.qqbot.Starter;
 import io.github.kloping.qqbot.api.event.Event;
@@ -16,8 +14,8 @@ import io.github.kloping.qqbot.interfaces.OnPackReceive;
 import io.github.kloping.spt.annotations.AutoStand;
 import io.github.kloping.spt.annotations.AutoStandAfter;
 import io.github.kloping.spt.annotations.Entity;
-import io.github.kloping.spt.interfaces.Logger;
 import io.github.kloping.spt.interfaces.component.ContextManager;
+import lombok.extern.slf4j.Slf4j;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.framing.CloseFrame;
 
@@ -31,8 +29,10 @@ import static io.github.kloping.qqbot.Starter.*;
  * @author github.kloping
  */
 @Entity
+@Slf4j
 public class AuthAndHeartbeat implements OnPackReceive, OnCloseListener, Events.EventRegister {
 
+    private static final String GATEWAY_TOKEN_FIELD = "token";
     public static final int CODE_ERROR = -10001;
     //Authentication fail
     public static final int CODE_4004 = 4004;
@@ -46,9 +46,6 @@ public class AuthAndHeartbeat implements OnPackReceive, OnCloseListener, Events.
      * 服务器 内部异常
      */
     public static final int CODE_1011 = 1011;
-
-    @AutoStand
-    Logger logger;
 
     @AutoStand
     ContextManager contextManager;
@@ -85,7 +82,7 @@ public class AuthAndHeartbeat implements OnPackReceive, OnCloseListener, Events.
                 break;
             case 4013:
             case 4014:
-                logger.error("无权限订阅事件");
+                log.error("无权限订阅事件");
                 break;
             case 1000:
                 logger.info(String.format("QQ机器人平台连接已成功关闭（返回码 %s）", code));
@@ -94,7 +91,7 @@ public class AuthAndHeartbeat implements OnPackReceive, OnCloseListener, Events.
                 identifyConnect(code, wss);
                 break;
             default:
-                logger.error(String.format("暂未处理的异常code(%s)", code));
+                log.error("暂未处理的异常code({})", code);
                 if (config.getAnyCloseReconnect()) delayIdentifyConnect(code, wss);
                 break;
         }
@@ -102,13 +99,12 @@ public class AuthAndHeartbeat implements OnPackReceive, OnCloseListener, Events.
     }
 
     private void delayIdentifyConnect(int code, WebSocketClient wss) {
-        Public.EXECUTOR_SERVICE.execute(() -> {
-            logger.error("websocket closed with code 1011,server internal exception");
-            logger.error("reconnect in 3 seconds");
+        config.getEventExecutor().execute(() -> {
+            log.info("websocket reconnect scheduled in 3 seconds (code {})", code);
             try {
                 TimeUnit.SECONDS.sleep(3);
             } catch (InterruptedException e) {
-                logger.error(e.getMessage());
+                log.warn("WebSocket reconnect delay interrupted", e);
             }
             identifyConnect(code, wss);
         });
@@ -122,6 +118,8 @@ public class AuthAndHeartbeat implements OnPackReceive, OnCloseListener, Events.
 
     public void identifyConnect(int code, WebSocketClient wss) {
         if (!config.getReconnect()) return;
+        wssWorker.reconnecting = true;
+        log.info("websocket reconnecting (code {})", code);
         Future future = contextManager.getContextEntity(Future.class, Starter.MAIN_FUTURE_ID);
         if (future != null && !future.isCancelled()) {
             future.cancel(true);
@@ -129,7 +127,7 @@ public class AuthAndHeartbeat implements OnPackReceive, OnCloseListener, Events.
         wssWorker.msgr = 0;
         wssWorker.msgs = 0;
         wssWorker.webSocket.close();
-        future = Public.EXECUTOR_SERVICE1.submit(wssWorker);
+        future = config.getWebSocketExecutor().submit(wssWorker);
         contextManager.append(future, Starter.MAIN_FUTURE_ID);
     }
 
@@ -142,7 +140,7 @@ public class AuthAndHeartbeat implements OnPackReceive, OnCloseListener, Events.
                 "    \"session_id\": \"%s\",\n" +
                 "    \"seq\": %s\n" +
                 "  }\n" +
-                "}", contextManager.getContextEntity(String.class, TOKEN_ID), sessionId, newstId));
+                "}", "QQBot " + start0.getAccessToken(), sessionId, newstId));
     }
 
     private Pack jumpPack = null;
@@ -157,11 +155,11 @@ public class AuthAndHeartbeat implements OnPackReceive, OnCloseListener, Events.
     @Override
     public boolean onReceive(Pack pack) {
         if (pack.getOp() == 10) {
-            logger.info("Authentication");
+            if (!wssWorker.reconnecting) log.info("Authentication");
             authPack = new Pack();
             authPack.setOp(2);
             JSONObject jo = new JSONObject();
-            jo.put(TOKEN_ID, "QQBot " + start0.getAccessToken());
+            jo.put(GATEWAY_TOKEN_FIELD, "QQBot " + start0.getAccessToken());
             jo.put(INTENTS_ID, contextManager.getContextEntity(Integer.class, INTENTS_ID));
             jo.put(SHARD_ID, contextManager.getContextEntity(Integer[].class, SHARD_ID));
             jo.put(PROPERTIES_ID, new Object());
@@ -172,7 +170,7 @@ public class AuthAndHeartbeat implements OnPackReceive, OnCloseListener, Events.
             jumpPack = new Pack();
             jumpPack.setOp(1);
             if (scheduledFuture != null && !scheduledFuture.isCancelled()) scheduledFuture.cancel(true);
-            scheduledFuture = FrameUtils.SERVICE.scheduleAtFixedRate(() -> {
+            scheduledFuture = config.getScheduledExecutor().scheduleAtFixedRate(() -> {
                 if (newstId != -1) {
                     jumpPack.setD(newstId);
                 }
@@ -180,7 +178,7 @@ public class AuthAndHeartbeat implements OnPackReceive, OnCloseListener, Events.
             }, heartbeatInterval.longValue(), heartbeatInterval.longValue(), TimeUnit.MILLISECONDS);
             return true;
         } else if (pack.getOp() == 7) {
-            logger.waring("op 7 Reconnect");
+            log.warn("op 7 Reconnect");
         }
         if (pack.getS() != null) {
             newstId = pack.getS().intValue();
@@ -199,7 +197,12 @@ public class AuthAndHeartbeat implements OnPackReceive, OnCloseListener, Events.
     @Override
     public Event handle(String t, JSONObject mateData, RawMessage message) {
         sessionId = mateData.getString("session_id");
-        logger.info("Ready!");
+        if (wssWorker.reconnecting) {
+            log.info("websocket reconnected");
+            wssWorker.reconnecting = false;
+        } else {
+            log.info("Ready!");
+        }
         return new BaseConnectedEvent(mateData, bot, sessionId);
     }
 }

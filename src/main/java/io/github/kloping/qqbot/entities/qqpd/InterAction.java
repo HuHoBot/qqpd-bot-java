@@ -30,20 +30,20 @@ public class InterAction implements SenderV2, SenderAndCidMidGetter {
     private String id;
     private Integer type;
     private String scene;
-    private Integer chat_type;
+    private Integer chatType;
     private String timestamp;
 
-    private String guild_id;
-    private String channel_id;
+    private String guildId;
+    private String channelId;
 
-    private String user_openid;
-    private String group_openid;
-    private String group_member_openid;
+    private String userOpenid;
+    private String groupOpenid;
+    private String groupMemberOpenid;
 
     private DataR data;
     private String version;
 
-    private String application_id;
+    private String applicationId;
 
     @Data
     public static class DataR {
@@ -62,7 +62,7 @@ public class InterAction implements SenderV2, SenderAndCidMidGetter {
 
     @Override
     public String getCid() {
-        return getEnvType() == EnvType.GUILD ? channel_id : group_openid;
+        return getEnvType() == EnvType.GUILD ? channelId : groupOpenid;
     }
 
     @Override
@@ -72,7 +72,7 @@ public class InterAction implements SenderV2, SenderAndCidMidGetter {
 
     @Override
     public EnvType getEnvType() {
-        return chat_type != null && chat_type == 0 ? EnvType.GUILD : EnvType.GROUP;
+        return chatType != null && chatType == 0 ? EnvType.GUILD : EnvType.GROUP;
     }
 
     @Setter

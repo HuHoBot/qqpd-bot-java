@@ -1,32 +1,35 @@
 package io.github.kloping.qqbot;
 
-import io.github.kloping.common.Public;
-import io.github.kloping.judge.Judge;
 import io.github.kloping.qqbot.entities.Bot;
 import io.github.kloping.qqbot.impl.ListenerHost;
 import io.github.kloping.qqbot.interfaces.FileUploadInterceptor;
 import io.github.kloping.qqbot.network.Events;
 import io.github.kloping.qqbot.network.WebSocketListener;
 import io.github.kloping.qqbot.network.WssWorker;
-import io.github.kloping.qqbot.utils.LoggerImpl;
+import io.github.kloping.qqbot.utils.StandaloneLogging;
 import io.github.kloping.spt.StarterObjectApplication;
 import io.github.kloping.spt.annotations.Entity;
 import io.github.kloping.spt.interfaces.AutomaticWiringValue;
 import io.github.kloping.spt.interfaces.component.ContextManager;
 import io.github.kloping.spt.interfaces.component.HttpClientManager;
+import io.github.kloping.spt.util.Judge;
+import lombok.AccessLevel;
 import lombok.Data;
 import lombok.Getter;
+import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-
-import static io.github.kloping.spt.PartUtils.getExceptionLine;
+import java.util.concurrent.ScheduledExecutorService;
 
 /**
  * <h3>一般启动方式</h3>
  * <pre>{@code
- *   Starter starter = new Starter("appid", "token");
+ *   Starter starter = new Starter("appid", "secret");
  *   starter.getConfig().setCode(Intents.PRIVATE_INTENTS.getCode());
  *   starter.run();
  * }</pre>
@@ -66,15 +69,18 @@ import static io.github.kloping.spt.PartUtils.getExceptionLine;
  *
  * @author github.kloping
  */
+@Slf4j
 public class Starter implements Runnable {
+    static {
+        StandaloneLogging.configure();
+    }
+
     public static final String SANDBOX_NET_MAIN = "https://sandbox.api.sgroup.qq.com/";
     public static final String NET_MAIN = "https://api.sgroup.qq.com/";
     public String net = NET_MAIN;
     public static final String NET_POINT = "{io.github.kloping.qqbot.Starter.net}";
     public static final String APPID_ID = "appid";
-    public static final String TOKEN_ID = "token";
     public static final String SECRET_ID = "secret";
-    public static final String AUTH_ID = "appid-token";
     public static final String INTENTS_ID = "intents";
     public static final String SHARD_ID = "shard";
     public static final String PROPERTIES_ID = "properties";
@@ -91,53 +97,47 @@ public class Starter implements Runnable {
     public final StarterObjectApplication APPLICATION = new StarterObjectApplication(Resource.class);
 
     private ContextManager contextManager;
-
-    public Starter(String appid, String token) {
-        this(appid, token, null);
-    }
+    private boolean started;
 
     /**
-     * qq群使用必要构建方式
+     * 使用 appid 和 secret 获取 Access Token 完成鉴权。
      *
-     * @param appid
-     * @param token
-     * @param secret
+     * @param appid 机器人 AppID
+     * @param secret 机器人密钥
      */
-    public Starter(String appid, String token, String secret) {
+    public Starter(String appid, String secret) {
         this.getConfig().setAppid(appid);
-        this.getConfig().setToken(token);
         this.getConfig().setSecret(secret);
-        APPLICATION.logger = LoggerImpl.INSTANCE;
     }
 
     @Override
-    public void run() {
+    public synchronized void run() {
+        if (started) {
+            log.info("Bot already started, ignore duplicate start");
+            return;
+        }
+        started = true;
         APPLICATION.PRE_SCAN_RUNNABLE.add(() -> {
-            APPLICATION.INSTANCE.getContextManager().append(APPLICATION.logger);
             APPLICATION.INSTANCE.getContextManager().append(APPLICATION.INSTANCE);
             APPLICATION.INSTANCE.getContextManager().append(getConfig(), CONFIG_ID);
         });
-        APPLICATION.logger.setLogLevel(1);
-        APPLICATION.logger.setPrefix("[qgpd-bot]");
+        log.info("Bot starting");
         APPLICATION.run0(Start0.class);
         after();
     }
 
     protected void after() {
         String appid = getConfig().getAppid();
-        String token = getConfig().getToken();
         String secret = getConfig().getSecret();
         net = getConfig().sandbox ? SANDBOX_NET_MAIN : NET_MAIN;
         contextManager = APPLICATION.INSTANCE.getContextManager();
         contextManager.append(this);
         contextManager.append(appid, APPID_ID);
-        contextManager.append(token, TOKEN_ID);
         if (Judge.isNotEmpty(config.getSecret()))
             contextManager.append(secret, SECRET_ID);
         if (Judge.isNotNull(getConfig().getCode()))
           contextManager.append(getConfig().getCode(), INTENTS_ID);
         contextManager.append(new Integer[]{0, 1}, SHARD_ID);
-        contextManager.append("Bot " + appid + "." + token, AUTH_ID);
         contextManager.append(getConfig().getReconnect(), RECONNECT_K_ID);
         wssWorker = contextManager.getContextEntity(WssWorker.class);
         contextManager.getContextEntity(HttpClientManager.class).setPrint(false);
@@ -151,11 +151,12 @@ public class Starter implements Runnable {
             try {
                 automaticWiringValue.wiring(config.getWebSocketListener(), contextManager);
             } catch (Exception e) {
-                APPLICATION.logger.error(e.getMessage() + "\n\tat " + getExceptionLine(e));
+                log.error("WebSocket listener wiring failed", e);
             }
         }
-        Future future = Public.EXECUTOR_SERVICE1.submit(wssWorker);
+        Future future = config.getWebSocketExecutor().submit(wssWorker);
         APPLICATION.INSTANCE.getContextManager().append(future, MAIN_FUTURE_ID);
+        log.info("WebSocket connection task submitted");
     }
 
     public void setReconnect(Boolean reconnect) {
@@ -183,7 +184,7 @@ public class Starter implements Runnable {
                 }
             }
         } catch (Exception e) {
-            APPLICATION.logger.error("shutdown: cancel main future failed: " + e.getMessage());
+            log.error("shutdown: cancel main future failed", e);
         }
 
         //3. 关闭 WebSocket 连接
@@ -192,7 +193,7 @@ public class Starter implements Runnable {
                 wssWorker.webSocket.closeBlocking();
             }
         } catch (Exception e) {
-            APPLICATION.logger.error("shutdown: close websocket failed: " + e.getMessage());
+            log.error("shutdown: close websocket failed", e);
         }
 
         //4. 关闭 WebHook 服务(如果开启了)
@@ -204,29 +205,13 @@ public class Starter implements Runnable {
                 }
             }
         } catch (Exception e) {
-            APPLICATION.logger.error("shutdown: stop webhook server failed: " + e.getMessage());
+            log.error("shutdown: stop webhook server failed", e);
         }
 
-        //5. 关闭心跳调度线程池 (io.github.kloping.date.FrameUtils.SERVICE)
-        try {
-            io.github.kloping.date.FrameUtils.SERVICE.shutdownNow();
-        } catch (Exception e) {
-            APPLICATION.logger.error("shutdown: FrameUtils.SERVICE shutdown failed: " + e.getMessage());
-        }
+        //5. 关闭 SDK 自己创建的线程池，用户传入的线程池由用户管理
+        config.shutdownExecutors();
 
-        //6. 关闭公共线程池 (io.github.kloping.common.Public.EXECUTOR_SERVICE / EXECUTOR_SERVICE1)
-        try {
-            Public.EXECUTOR_SERVICE.shutdownNow();
-        } catch (Exception e) {
-            APPLICATION.logger.error("shutdown: Public.EXECUTOR_SERVICE shutdown failed: " + e.getMessage());
-        }
-        try {
-            Public.EXECUTOR_SERVICE1.shutdownNow();
-        } catch (Exception e) {
-            APPLICATION.logger.error("shutdown: Public.EXECUTOR_SERVICE1 shutdown failed: " + e.getMessage());
-        }
-
-        APPLICATION.logger.info("Bot shutdown complete");
+        log.info("Bot shutdown complete");
     }
 
     /**
@@ -271,8 +256,7 @@ public class Starter implements Runnable {
             try {
                 APPLICATION.INSTANCE.getClassManager().add(cla);
             } catch (Exception e) {
-                APPLICATION.logger.error("An error occurred in the registration class " + cla.getSimpleName());
-                APPLICATION.logger.error("\n\tat " + getExceptionLine(e));
+                log.error("An error occurred in the registration class {}", cla.getSimpleName(), e);
             }
         });
     }
@@ -281,10 +265,6 @@ public class Starter implements Runnable {
     public static class Config {
         public boolean sandbox = false;
         private String appid;
-        private String token;
-        /**
-         * 不使用v2群聊时可不设置
-         */
         private String secret;
         /**
          * code 从 {@link io.github.kloping.qqbot.api.Intents#getCode }
@@ -301,10 +281,56 @@ public class Starter implements Runnable {
         private Set<ListenerHost> listenerHosts = new HashSet<>();
         private FileUploadInterceptor interceptor0;
         private WebSocketListener webSocketListener;
+        private transient ExecutorService eventExecutor = Executors.newFixedThreadPool(8);
+        private transient ExecutorService webSocketExecutor = Executors.newSingleThreadExecutor();
+        private transient ScheduledExecutorService scheduledExecutor = Executors.newSingleThreadScheduledExecutor();
+
+        @Getter(AccessLevel.NONE)
+        @Setter(AccessLevel.NONE)
+        private transient boolean eventExecutorOwned = true;
+
+        @Getter(AccessLevel.NONE)
+        @Setter(AccessLevel.NONE)
+        private transient boolean webSocketExecutorOwned = true;
+
+        @Getter(AccessLevel.NONE)
+        @Setter(AccessLevel.NONE)
+        private transient boolean scheduledExecutorOwned = true;
+
+        public void setEventExecutor(ExecutorService eventExecutor) {
+            if (eventExecutor == null) throw new IllegalArgumentException("eventExecutor cannot be null");
+            if (this.eventExecutor == eventExecutor) return;
+            if (eventExecutorOwned) this.eventExecutor.shutdownNow();
+            this.eventExecutor = eventExecutor;
+            this.eventExecutorOwned = false;
+        }
+
+        public void setWebSocketExecutor(ExecutorService webSocketExecutor) {
+            if (webSocketExecutor == null) throw new IllegalArgumentException("webSocketExecutor cannot be null");
+            if (this.webSocketExecutor == webSocketExecutor) return;
+            if (webSocketExecutorOwned) this.webSocketExecutor.shutdownNow();
+            this.webSocketExecutor = webSocketExecutor;
+            this.webSocketExecutorOwned = false;
+        }
+
+        public void setScheduledExecutor(ScheduledExecutorService scheduledExecutor) {
+            if (scheduledExecutor == null) throw new IllegalArgumentException("scheduledExecutor cannot be null");
+            if (this.scheduledExecutor == scheduledExecutor) return;
+            if (scheduledExecutorOwned) this.scheduledExecutor.shutdownNow();
+            this.scheduledExecutor = scheduledExecutor;
+            this.scheduledExecutorOwned = false;
+        }
+
+        private void shutdownExecutors() {
+            if (eventExecutorOwned) eventExecutor.shutdownNow();
+            if (webSocketExecutorOwned) webSocketExecutor.shutdownNow();
+            if (scheduledExecutorOwned) scheduledExecutor.shutdownNow();
+        }
 
         /**
          * 在沙箱环境与正式环境 之前切换 默认正式环境
          */
+        @Deprecated
         public void sandbox() {
             sandbox = !sandbox;
         }

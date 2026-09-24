@@ -2,7 +2,6 @@ package io.github.kloping.qqbot;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import io.github.kloping.common.Public;
 import io.github.kloping.qqbot.api.BotContent;
 import io.github.kloping.qqbot.api.exc.RequestException;
 import io.github.kloping.qqbot.entities.Bot;
@@ -13,14 +12,11 @@ import io.github.kloping.spt.annotations.AutoStand;
 import io.github.kloping.spt.annotations.AutoStandAfter;
 import io.github.kloping.spt.annotations.Entity;
 import io.github.kloping.spt.impls.HttpStatusReceiver;
-import io.github.kloping.spt.impls.LoggerImpl;
-import io.github.kloping.spt.interfaces.Logger;
 import io.github.kloping.spt.interfaces.component.HttpClientManager;
-import org.fusesource.jansi.Ansi;
+import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Connection;
 import org.jsoup.nodes.Document;
 
-import java.awt.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 
@@ -28,51 +24,41 @@ import java.lang.reflect.Method;
  * @author github.kloping
  */
 @Entity
+@Slf4j
 public class HttpClientConfig implements HttpStatusReceiver {
     @AutoStandAfter
     public void after(HttpClientManager manager) {
         manager.addHttpStatusReceiver(this);
     }
 
-    @AutoStand
-    Logger logger;
 
     @AutoStand
     Bot bot;
 
-    private final Color methodColor = new Color(111, 167, 241, 219);
-    private final Color interfaceColor = new Color(114, 225, 158, 219);
-    private final Color dataColor = new Color(232, 135, 180, 179);
-    private final Color urlColor = new Color(229, 178, 127, 219);
+    @AutoStand
+    Starter.Config config;
 
     @Override
     public void receive(HttpClientManager manager, String url, Integer code, Class<?> interface0, Method method,
                         Connection.Method reqMethod, Class<?> cla, Object o, Document metadata) {
         if (o == null || code == null || metadata == null) return;
-        logger.log(String.format("Use the (%s) method through the (%s) interface to request " +
+        log.debug(String.format("Use the (%s) method through the (%s) interface to request " +
                         "the data obtained by the response code of the (%s) URL is (%s), " +
                         "and (%s) may be converted to (%s) type Will be processed and filtered",
-                Ansi.ansi().fgRgb(methodColor.getRGB()).a(reqMethod.name()).reset().toString(),
-                Ansi.ansi().fgRgb(interfaceColor.getRGB()).a(interface0.getSimpleName()).reset().toString(),
-                Ansi.ansi().fgRgb(urlColor.getRGB()).a(url).reset().toString(),
-                (code >= 400 || code < 200) ? Ansi.ansi().fgRgb(LoggerImpl.ERROR_COLOR.getRGB()).a(code).reset().toString()
-                        : Ansi.ansi().fgRgb(LoggerImpl.INFO_COLOR.getRGB()).a(code).reset().toString(),
-                (code >= 400 || code < 200) ? Ansi.ansi().fgRgb(LoggerImpl.ERROR_COLOR.getRGB()).a(metadata.body().wholeText()).reset().toString()
-                        : Ansi.ansi().fgRgb(dataColor.getRGB()).a(metadata.body().wholeText()).reset().toString(),
-                Ansi.ansi().fgRgb(LoggerImpl.NORMAL_LOW_COLOR.getRGB()).a(o).reset().toString()
+                reqMethod.name(), interface0.getSimpleName(), url, code, metadata.body().wholeText(), o
         ));
         fillAll(cla, o);
-        Public.EXECUTOR_SERVICE.submit(() -> {
+        config.getEventExecutor().submit(() -> {
             if (o instanceof ActionResult) {
                 ActionResult result = (ActionResult) o;
                 if (result.getSent()) {
                     RawMessage rawMessage = result.getRawMessage();
                     if (url.contains("dms")) {
-                        logger.info(String.format("Bot(%s): %s <= %s",
+                        log.info(String.format("Bot(%s): %s <= %s",
                                 bot.getInfo().getUsername(),
                                 rawMessage.getChannelId() + "(私信)", rawMessage.getContent().trim()));
                     } else {
-                        logger.info(String.format("Bot(%s): %s <= %s",
+                        log.info(String.format("Bot(%s): %s <= %s",
                                 bot.getInfo().getUsername(),
                                 bot.getGuild(rawMessage.getGuildId()).getChannel(rawMessage.getChannelId()).getName(),
                                 rawMessage.getContent().trim()));
@@ -93,7 +79,7 @@ public class HttpClientConfig implements HttpStatusReceiver {
                     Constructor constructor = exceptionClass.getConstructor(int.class, String.class, String.class, String.class);
                     requestException = (RequestException) constructor.newInstance(eccode, bodyJson, url, method.getName());
                 } catch (Exception e) {
-                    logger.error(e.getMessage());
+                    log.error("Failed to create request exception", e);
                 }
             } else {
                 requestException = new RequestException(eccode, bodyJson, url, method.getName());

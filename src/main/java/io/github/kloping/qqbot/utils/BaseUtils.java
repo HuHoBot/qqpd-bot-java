@@ -1,20 +1,17 @@
 package io.github.kloping.qqbot.utils;
 
-import io.github.kloping.arr.ArrDeSerializer;
-import io.github.kloping.judge.Judge;
-import io.github.kloping.number.NumberUtils;
 import io.github.kloping.qqbot.api.SendAble;
-import io.github.kloping.qqbot.entities.ex.At;
-import io.github.kloping.qqbot.entities.ex.AtAll;
+import io.github.kloping.qqbot.entities.ex.Audio;
 import io.github.kloping.qqbot.entities.ex.FileMsg;
-import io.github.kloping.qqbot.entities.ex.PlainText;
+import io.github.kloping.qqbot.entities.ex.Image;
+import io.github.kloping.qqbot.entities.ex.Video;
 import io.github.kloping.qqbot.entities.ex.msg.MessageChain;
-import io.github.kloping.qqbot.entities.qqpd.data.Emoji;
 import io.github.kloping.qqbot.entities.qqpd.message.MessageAttachment;
 import io.github.kloping.qqbot.entities.qqpd.message.MessageReference;
 import io.github.kloping.qqbot.entities.qqpd.message.RawMessage;
 import io.github.kloping.qqbot.entities.qqpd.message.RawPreMessage;
 import io.github.kloping.qqbot.impl.MessagePacket;
+import io.github.kloping.spt.util.Judge;
 
 import java.util.*;
 import java.util.regex.Pattern;
@@ -63,11 +60,24 @@ public class BaseUtils {
         String content = rawMessage.getContent();
         MessageChain chain = new MessageChain();
         dispose(content, chain);
-        if (rawMessage.getAttachments() != null) {
+        if (rawMessage.getAttachments() != null && rawMessage.getAttachments().length > 0) {
             for (MessageAttachment attachment : rawMessage.getAttachments()) {
-                FileMsg fileMsg = null;
-                fileMsg = new FileMsg(1, attachment.getContent_type(), attachment.getUrl(), null, attachment.getFilename()){};
-                chain.append(fileMsg);
+                String contentType = attachment.getContent_type();
+                //	附件内容类型（MIME 类型）: voice=语音消息 image/jpeg=JPEG 图片 image/png=PNG 图片 image/gif=GIF 图片 video/mp4=MP4 视频 file=群文件
+                if (contentType.startsWith("image")) {
+                    chain.append(new Image(attachment.getUrl()));
+                    continue;
+                } else if (contentType.startsWith("video")) {
+                    chain.append(new Video(attachment.getUrl(), attachment.getFilename()));
+                    continue;
+                } else if (contentType.startsWith("voice")) {
+                    chain.append(new Audio(attachment.getUrl(), attachment.getFilename()));
+                    continue;
+                } else {
+                    FileMsg fileMsg = null;
+                    fileMsg = new FileMsg(1, attachment.getContent_type(), attachment.getUrl(), null, attachment.getFilename()) {};
+                    chain.append(fileMsg);
+                }
             }
         }
         if (filter != null && filter.length > 0) {
@@ -77,52 +87,9 @@ public class BaseUtils {
         return chain;
     }
 
-    public static final ArrDeSerializer<SendAble> DE_SERIALIZER = new ArrDeSerializer<>();
-
-    static {
-        DE_SERIALIZER.add(AT_PATTERN, new ArrDeSerializer.Rule0<At>() {
-            @Override
-            public At deserializer(String s) {
-                return new At(At.MEMBER_TYPE, NumberUtils.findNumberFromString(s));
-            }
-        });
-        DE_SERIALIZER.add(AT_ALL, new ArrDeSerializer.Rule0<AtAll>() {
-            @Override
-            public AtAll deserializer(String s) {
-                return new AtAll();
-            }
-        });
-        DE_SERIALIZER.add(AT_CHANNEL, new ArrDeSerializer.Rule0<At>() {
-            @Override
-            public At deserializer(String s) {
-                return new At(At.CHANNEL_TYPE, NumberUtils.findNumberFromString(s));
-            }
-        });
-        DE_SERIALIZER.add(EMOJI, new ArrDeSerializer.Rule0<Emoji>() {
-            @Override
-            public Emoji deserializer(String s) {
-                return Emoji.valueOf(Integer.valueOf(NumberUtils.findNumberFromString(s)));
-            }
-        });
-        DE_SERIALIZER.add(EMOJI_V2, new ArrDeSerializer.Rule0<Emoji>() {
-            @Override
-            public Emoji deserializer(String s) {
-                Map<String, Object> mm = parseAngleBracketsEmoji(s);
-                Object v = mm.get("faceId");
-                return Emoji.valueOf(Integer.valueOf(NumberUtils.findNumberFromString(v.toString())));
-            }
-        });
-        DE_SERIALIZER.add(ArrDeSerializer.EMPTY_PATTERN, new ArrDeSerializer.Rule0<PlainText>() {
-            @Override
-            public PlainText deserializer(String s) {
-                return new PlainText(s);
-            }
-        });
-    }
-
     private static void dispose(String content, MessageChain chain) {
         if (Judge.isEmpty(content)) return;
-        List<SendAble> sendAbles = DE_SERIALIZER.deserializer(content);
+        List<SendAble> sendAbles = PdCode.deserializePdCode(content);
         if (sendAbles == null || sendAbles.isEmpty()) return;
         for (SendAble sendAble : sendAbles) {
             chain.append(sendAble);

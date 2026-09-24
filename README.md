@@ -7,7 +7,7 @@
 
 ## QQ机器人 Java/JVM/kotlin SDK
 
-> 非官方 可用于 Java 8+
+> 非官方 可用于 Java 11+
 
 Java SDK主要基于[基础 API (opens new window)](https://bot.q.qq.com/wiki/develop/api-v2/)封装，提供给用户一种简单、高效的使用方式。
 
@@ -33,41 +33,35 @@ Maven
 <dependency>
     <groupId>io.github.kloping</groupId>
     <artifactId>bot-qqpd-java</artifactId>
-    <version>1.5.3-L4</version>
+    <version>1.5.4-R4</version>
 </dependency>
 ```
 
 Gradle
  
-    implementation 'io.github.kloping:bot-qqpd-java:1.5.3-L4'
-
-> [AI生成简易文档](docs-ai.md)
+    implementation 'io.github.kloping:bot-qqpd-java:1.5.4-R4'
 
 ### 使用前提
 
-1. 到https://q.qq.com/ 申请机器人 获得Bot 开发者ID(appid) 和 机器人令牌(token)
+1. 到https://q.qq.com/ 申请机器人 获得Bot 开发者ID(appid) 和机器人密钥(secret)
 
 ~~2. 发布审核 发布后为公域~~
 
-### [开发文档](./docs/readme.md) / [q群使用说明](./docs/v2.md)
+## [开发者详细文档目录](./docs/readme.md) 
 
 ### 使用示例
 
 启动方式
 
 ```java 
-    Starter starter = new Starter("appid","token");
-    //如果使用q群 则 new Starter("appid", "token", "secret");
+    Starter starter = new Starter("appid", "secret");
     starter.getConfig().setCode(Intents.PRIVATE_INTENTS.getCode());
     // webhook 链接方式
     //starter.getConfig().setWebhookport(81);
     starter.run();
-    // 设置日志前缀
-    //starter.APPLICATION.logger.setPrefix("[qgpd-bot]");
-    //
 ```
 
-> #### V1.5.0-Beta7+ 注册监听器主机方式 [荐]
+> #### 注册监听器主机方式 [荐]
 
 ```java
 starter.registerListenerHost(new ListenerHost(){
@@ -78,7 +72,6 @@ starter.registerListenerHost(new ListenerHost(){
 });
 ```
 
-> #### V1.4.6
 > 事件订阅 默认的事件订阅 不会接收消息事件 <br>
 > 需要确定自己的机器人是公域还是私域 <br>
 > 来确定 需要 **[设置订阅](src/test/java/test_Intents.java)** 的 **[事件类型](src/main/java/io/github/kloping/qqbot/api/Intents.java)**
@@ -104,24 +97,6 @@ import io.github.kloping.qqbot.api.Intents;
 import io.github.kloping.qqbot.api.message.MessageChannelReceiveEvent;
 import io.github.kloping.qqbot.api.message.MessageDirectReceiveEvent;
 import io.github.kloping.qqbot.impl.ListenerHost;
-```
-
-### 部分配置
-```java
-public class ConfigExample{
-    public static void main(String[] args) {
-        // on starter.run()... after
-        // 日志等级设置为0在控制台展示所有日志
-        starter.APPLICATION.logger.setLogLevel(0);
-        // 设置日志前缀
-        starter.APPLICATION.logger.setPrefix("[qgpd-bot]");
-        //日志文件路径
-        LoggerImpl.INSTANCE.logFileDir = "./logs/%s.log";
-        //日志文件格式
-        LoggerImpl.INSTANCE.dfn = new SimpleDateFormat("/yyyy-MM-dd");
-        
-    }
-}
 ```
 
 更多使用方式参考查看 [test](./src/test/java)

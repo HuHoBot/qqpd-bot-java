@@ -1,8 +1,5 @@
 package io.github.kloping.qqbot.utils;
 
-import io.github.kloping.spt.interfaces.Logger;
-import org.fusesource.jansi.Ansi;
-
 import java.awt.*;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -15,7 +12,7 @@ import java.util.Date;
 /**
  * @author github.kloping
  */
-public class LoggerImpl implements Logger {
+public class LoggerImpl {
     public static final LoggerImpl INSTANCE = new LoggerImpl();
 
     /**
@@ -36,8 +33,33 @@ public class LoggerImpl implements Logger {
         logSink = sink;
     }
 
+    /**
+     * 读取当前日志桥，供宿主应用（例如 logback appender）把日志转发到平台日志。
+     */
+    public static LogSink getLogSink() {
+        return logSink;
+    }
+
     public static void clearLogSink() {
         logSink = null;
+    }
+
+    /**
+     * Adds the same true-color ANSI sequence that Jansi used to generate,
+     * without loading Jansi from the host application's class loader.
+     *
+     * Server platforms commonly bundle an older Jansi version. Calling a
+     * method introduced by Jansi 2.x from a plugin then causes
+     * NoSuchMethodError during startup or shutdown. Keeping this tiny formatter
+     * in the SDK avoids that classpath conflict while preserving standalone
+     * console colors. When a host logger is configured, return plain text so
+     * ANSI escape sequences are not passed into the host logger.
+     */
+    public static String colorize(Object value, Color color) {
+        String text = String.valueOf(value);
+        if (logSink != null || color == null) return text;
+        return String.format("\u001B[38;2;%d;%d;%dm%s\u001B[m",
+                color.getRed(), color.getGreen(), color.getBlue(), text);
     }
 
     public static final Color NORMAL_LOW_COLOR = new Color(116, 117, 116, 224);
@@ -90,17 +112,14 @@ public class LoggerImpl implements Logger {
      *
      * @param path
      */
-    @Override
     public void setOutFile(String path) {
         this.logFileDir = path;
     }
 
-    @Override
     public void setFormat(SimpleDateFormat format) {
         df = format;
     }
 
-    @Override
     public void Log(String mess, Integer level) {
         String log = null;
         String out = null;
@@ -124,13 +143,13 @@ public class LoggerImpl implements Logger {
             log = prefix + log;
             out = null;
             if (level == 0) {
-                out = Ansi.ansi().fgRgb(NORMAL_COLOR.getRGB()).a(log).reset().toString();
+                out = colorize(log, NORMAL_COLOR);
             } else if (level == 1) {
-                out = Ansi.ansi().fgRgb(INFO_COLOR.getRGB()).a(log).reset().toString();
+                out = colorize(log, INFO_COLOR);
             } else if (level == 2) {
-                out = Ansi.ansi().fgRgb(DEBUG_COLOR.getRGB()).a(log).reset().toString();
+                out = colorize(log, DEBUG_COLOR);
             } else if (level == -1) {
-                out = Ansi.ansi().fgRgb(ERROR_COLOR.getRGB()).a(log).reset().toString();
+                out = colorize(log, ERROR_COLOR);
             }
         } catch (Exception e) {
             if (level != -1 && level < logLevel) {
@@ -184,12 +203,10 @@ public class LoggerImpl implements Logger {
         }
     }
 
-    @Override
     public int setLogLevel(int level) {
         return logLevel = level;
     }
 
-    @Override
     public void setPrefix(String prefix) {
         this.prefix = prefix;
     }

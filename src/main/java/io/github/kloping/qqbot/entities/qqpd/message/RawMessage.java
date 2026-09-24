@@ -1,7 +1,6 @@
 package io.github.kloping.qqbot.entities.qqpd.message;
 
 import com.alibaba.fastjson.annotation.JSONField;
-import io.github.kloping.judge.Judge;
 import io.github.kloping.qqbot.api.*;
 import io.github.kloping.qqbot.api.message.Pinsble;
 import io.github.kloping.qqbot.entities.Bot;
@@ -18,11 +17,12 @@ import io.github.kloping.qqbot.http.data.V2MsgData;
 import io.github.kloping.qqbot.http.data.V2Result;
 import io.github.kloping.qqbot.impl.MessagePacket;
 import io.github.kloping.qqbot.utils.BaseUtils;
-import io.github.kloping.spt.PartUtils;
+import io.github.kloping.spt.util.Judge;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import lombok.experimental.Accessors;
 
 import static io.github.kloping.qqbot.entities.qqpd.Channel.SEND_MESSAGE_HEADERS;
@@ -33,6 +33,7 @@ import static io.github.kloping.qqbot.entities.qqpd.Channel.SEND_MESSAGE_HEADERS
  * @author github-kloping
  */
 @Data
+@Slf4j
 @Accessors(chain = true)
 @EqualsAndHashCode
 public class RawMessage implements SenderAndCidMidGetter, DeleteAble, Reactive, Pinsble, SenderV2 {
@@ -86,7 +87,7 @@ public class RawMessage implements SenderAndCidMidGetter, DeleteAble, Reactive, 
                 }
             }
         } catch (Exception e) {
-            bot.logger.error(PartUtils.getExceptionLine(e));
+            log.error("File upload preparation failed", e);
         }
     }
 
@@ -170,11 +171,13 @@ public class RawMessage implements SenderAndCidMidGetter, DeleteAble, Reactive, 
     }
 
     @Override
+    @JSONField(serialize = false, deserialize = false)
     public PinsMessage getPins() {
         return getBot().channelBase.getPins(getChannelId());
     }
 
     @Override
+    @JSONField(serialize = false, deserialize = false)
     public BaseV2 getV2() {
         return envType == EnvType.GROUP ? bot.groupBaseV2 : envType == EnvType.GROUP_USER ? bot.userBaseV2 : null;
     }
@@ -182,8 +185,28 @@ public class RawMessage implements SenderAndCidMidGetter, DeleteAble, Reactive, 
     public String toString0() {
         StringBuilder sb = new StringBuilder();
         sb.append(content);
-        if (attachments != null) for (MessageAttachment attachment : attachments)
-            sb.append("[pic:").append(attachment.getFilename()).append("]");
+        if (attachments != null) for (MessageAttachment attachment : attachments){
+            //根据类型判断
+            String content_type = attachment.getContent_type();
+            /**
+             * voice=语音消息 image/jpeg=JPEG 图片 image/png=PNG 图片 image/gif=GIF 图片 video/mp4=MP4 视频 file=群文件
+             */
+            String content;
+            String asrText = "";
+            if(content_type.contains("voice")){
+                content = "voice";
+                if(!attachment.getAsr_refer_text().isEmpty())
+                    asrText = "|"+attachment.getAsr_refer_text();
+            }
+            else if(content_type.contains("image"))
+                content = "pic";
+            else if(content_type.contains("video"))
+                content = "video";
+            else
+                content = "file";
+            sb.append("[").append(content).append(":").append(attachment.getFilename()).append(asrText).append("]");
+        }
+
         return sb.toString();
     }
 }

@@ -6,6 +6,9 @@ import io.github.kloping.qqbot.entities.ex.msg.MessageChain;
 import io.github.kloping.qqbot.entities.qqpd.message.RawMessage;
 import io.github.kloping.qqbot.entities.qqpd.v2.Contact;
 
+import java.util.Collections;
+import java.util.List;
+
 /**
  * 消息事件接口
  *
@@ -25,6 +28,15 @@ public interface MessageEvent<T extends Contact, S extends Contact> extends Even
      * @return
      */
     T getSender();
+
+    /**
+     * 获取提及的用户
+     *
+     * @return
+     */
+    default List<? extends T> getMentions() {
+        return Collections.emptyList();
+    }
 
     /**
      * 发送环境

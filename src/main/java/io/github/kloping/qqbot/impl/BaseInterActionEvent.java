@@ -14,6 +14,7 @@ import io.github.kloping.qqbot.http.data.Result;
 public class BaseInterActionEvent implements InterActionEvent {
 
     public BaseInterActionEvent(Bot bot, JSONObject metaData) {
+        this.metaData = metaData;
         interAction = metaData.toJavaObject(InterAction.class);
         interAction.setBot(bot);
     }
@@ -48,7 +49,7 @@ public class BaseInterActionEvent implements InterActionEvent {
 
     @Override
     public Integer getChatType() {
-        return getInterAction().getChat_type();
+        return getInterAction().getChatType();
     }
 
     @Override
@@ -58,7 +59,7 @@ public class BaseInterActionEvent implements InterActionEvent {
 
     @Override
     public void response(int code) {
-        getBot().interActionBase.response(getInterAction().getId(), String.format("{\"code\": %s}", code));
+        getBot().restApi.respondInteraction(getInterAction().getId(), code);
     }
 
     @Override

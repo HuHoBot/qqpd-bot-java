@@ -1,6 +1,7 @@
 package io.github.kloping.qqbot.impl.message.v2;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import io.github.kloping.qqbot.api.SendAble;
 import io.github.kloping.qqbot.api.SenderAndCidMidGetter;
@@ -20,6 +21,10 @@ import io.github.kloping.qqbot.network.Events;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 /**
  * @author github.kloping
  */
@@ -28,6 +33,7 @@ public class BaseGroupMessageEvent extends BaseMessageEvent<Group> implements Gr
     @Getter
     private Group subject;
     private Member sender;
+    private List<Member> mentions;
     @Setter
     private Bot bot;
 
@@ -42,12 +48,29 @@ public class BaseGroupMessageEvent extends BaseMessageEvent<Group> implements Gr
         this.msgId = getMetadata().getString("id");
         this.sender = new Member(getMetadata().getJSONObject("author"));
         this.subject = new Group(getMetadata());
+        JSONArray mentionsArray = getMetadata().getJSONArray("mentions");
+        if (mentionsArray == null || mentionsArray.isEmpty()) {
+            this.mentions = Collections.emptyList();
+        } else {
+            List<Member> parsedMentions = new ArrayList<>(mentionsArray.size());
+            for (int i = 0; i < mentionsArray.size(); i++) {
+                JSONObject mention = mentionsArray.getJSONObject(i);
+                if (mention != null) {
+                    parsedMentions.add(new Member(mention));
+                }
+            }
+            this.mentions = parsedMentions.isEmpty()
+                    ? Collections.emptyList()
+                    : Collections.unmodifiableList(parsedMentions);
+        }
 
         this.getSender().setId(this.getSender().getMeta().getString("id"));
         this.getSender().setOpenid(this.getSender().getMeta().getString("member_openid"));
 
         this.subject.setBot(bot);
         this.sender.setBot(bot);
+        this.mentions.forEach(mention -> mention.setBot(bot));
+        this.sender.setGroup(this.subject);
     }
 
     @Override
