@@ -9,6 +9,8 @@
 - [事件监听](#事件监听)
 - [消息发送](#消息发送)
 - [QQ 群机器人](#qq-群机器人)
+- [自定义菜单与指令面板](#自定义菜单与指令面板)
+- [素材管理](#素材管理)
 - [自定义消息与主动发送](#自定义消息与主动发送)
 - [配置连接方式](#配置连接方式)
 - [依赖兼容性](#依赖兼容性)
@@ -107,6 +109,75 @@ MessageAsyncBuilder builder = new MessageAsyncBuilder();
 builder.image("https://kloping.top/icon.jpg");
 builder.text("主动消息测试");
 bot.sendMessage("474905EE5C4F5199A1EC08E1C04BF077", builder.build());
+```
+
+## 自定义菜单与指令面板
+以下能力均为应用级配置，通过 `Bot` 对象调用。对应接口 [自定义菜单与指令面板](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/menu-panel/)。
+
+### 自定义菜单（仅 C2C 单聊）
+```java
+Bot bot = starter.getBot();
+// 查询当前菜单
+MenuData data = bot.getMenu();
+// 修改菜单（覆盖原有完整配置）
+bot.setMenu(new Menu().setItems(Arrays.asList(
+        new Menu.MenuItem().setType(Menu.TYPE_SEND_MESSAGE).setName("帮助").setSendMessage("/help"),
+        new Menu.MenuItem().setType(Menu.TYPE_LINK).setName("官网").setLink("https://example.com"),
+        new Menu.MenuItem().setType(Menu.TYPE_SWITCH).setName("搜索")
+                .setSwitchConfig(new Menu.SwitchConfig().setSwitchId("search").setDefaultOn(true)))));
+```
+
+### 指令面板
+支持 `c2c`（单聊）、`group`（群聊）、`channel`（文字子频道）、`dm`（频道私信）四种场景，其中 `c2c`/`group` 支持按指定用户/群生效。
+```java
+// 创建 group 指定群面板
+Panel.Created created = bot.createPanel(new Panel.CreateRequest()
+        .setScope(Panel.SCOPE_GROUP)
+        .setTargetType(Panel.TARGET_SPECIFIC)
+        .setGroupOpenids(Collections.singletonList("group-openid"))
+        .setPanel(new Panel().setItems(Collections.singletonList(
+                new Panel.PanelItem().setType(Panel.TYPE_COMMAND).setName("群签到").setDesc("每日签到")))));
+String panelId = created.getPanelId();
+
+// 分页查询面板列表 / 查询详情
+bot.getPanels(Panel.SCOPE_GROUP);            // 第一页
+bot.getPanels(Panel.SCOPE_GROUP, null, 50);  // 指定游标与条数
+bot.getPanel(panelId);
+
+// 修改面板配置（不影响已关联的用户/群）
+bot.updatePanel(panelId, new Panel().setRemark("更新备注").setItems(Collections.singletonList(
+        new Panel.PanelItem().setType(Panel.TYPE_COMMAND).setName("群签到").setDesc("每日签到"))));
+
+// 增删面板关联对象（仅 c2c/group 的 specific 面板）
+bot.updatePanelTarget(panelId, new Panel.TargetRequest()
+        .setOp(Panel.OP_ADD).setGroupOpenids(Collections.singletonList("another-group")));
+
+// 删除面板
+bot.deletePanel(panelId);
+```
+
+## 素材管理
+预上传 Markdown 图片，换取 `qqbot-media://` 引用链接后在 Markdown 消息中反复引用。对应接口 [素材管理](https://bot.q.qq.com/wiki/develop/api-v2/server-inter/message/material-management.html)。
+限制：单图不超过 10MB，仅支持 png/jpeg/gif/webp；单机器人上限 100 张（删除可释放）；引用滑动过期，每次被消息成功引用后 90 天顺延。
+```java
+Bot bot = starter.getBot();
+// 上传（内部依次执行申请上传、直传预签名地址、完成上传）
+// complete 接口仅返回 image_id、url、ttl、preview_url，其余字段按入参与本机时间补齐（近似值）
+MediaImage image = bot.uploadImage("kline.png", bytes);
+
+// 生成 Markdown 引用并发送
+Markdown markdown = Markdown.ofText(image.toMarkdown("分时K线", 800, 400));
+// ![分时K线 #800px #400px](qqbot-media://image/v1/xxx)
+
+// 分页查询当前有效图片 / 删除（删除后引用立即失效，已发送消息不受影响）
+bot.getMediaImages();                     // 第一页
+bot.getMediaImages("cursor");             // 指定游标
+bot.deleteMediaImage(image.getImageId());
+
+// 消息事件监听器内也可直接通过事件调用（简单委托给 Bot）
+// event.uploadImage("kline.png", bytes);
+// event.getMediaImages();
+// event.deleteMediaImage(image.getImageId());
 ```
 
 ## 配置连接方式
